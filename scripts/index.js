@@ -11,8 +11,10 @@
 import { makeBrowser, searchWindow, extractDetail, MODULES, monthWindows } from '../src/scraper.js';
 import { upsertPermit, linkPermitToAddress, applySchema, query } from '../src/db.js';
 
-const START_DATE  = new Date(process.env.START_DATE || '2010-01-01');
-const END_DATE    = new Date();
+// Parse as local date (not UTC) to avoid timezone-shifting the month boundary
+const [sy, sm, sd] = (process.env.START_DATE || '2010-01-01').split('-').map(Number);
+const START_DATE = new Date(sy, sm - 1, sd);
+const END_DATE   = new Date();
 const ONLY_MODULE = process.env.MODULE || null;
 const DETAIL      = process.env.SKIP_DETAIL !== '1'; // set SKIP_DETAIL=1 for list-only fast pass
 

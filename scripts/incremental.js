@@ -11,7 +11,7 @@
 import { makeBrowser, searchWindow, extractDetail, MODULES, fmtDate, monthWindows } from '../src/scraper.js';
 import { upsertPermit, linkPermitToAddress } from '../src/db.js';
 
-const LOOKBACK = parseInt(process.env.LOOKBACK_DAYS || '8', 10);
+const LOOKBACK  = parseInt(process.env.LOOKBACK_DAYS || '8', 10);
 
 async function main() {
   const end   = new Date();
