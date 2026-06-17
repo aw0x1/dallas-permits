@@ -17,7 +17,8 @@ let
 
   scraperEnv = {
     PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${chromium}/bin/chromium";
-    SURREALDB_URL  = "http://localhost:8000";
+    # SurrealDB runs in k3s NodePort 30800 on the Optiplex
+    SURREALDB_URL  = "http://localhost:30800";
     SURREALDB_NS   = "dallas";
     SURREALDB_DB   = "permits";
     # SURREALDB_USER / SURREALDB_PASS come from EnvironmentFile (see below)
@@ -53,8 +54,8 @@ in {
   # ── Daily incremental scrape ──────────────────────────────────────────────
   systemd.services.dallas-permits-scrape = {
     description = "Dallas permits daily incremental scrape";
-    after       = [ "surrealdb.service" "network-online.target" ];
-    requires    = [ "surrealdb.service" ];
+    after       = [ "k3s.service" "network-online.target" ];
+    wants       = [ "k3s.service" ];
     serviceConfig = {
       Type             = "oneshot";
       User             = "dallas-permits";
@@ -103,8 +104,8 @@ in {
   # Run with: systemctl start dallas-permits-index
   systemd.services.dallas-permits-index = {
     description = "Dallas permits full historical index (one-time)";
-    after       = [ "surrealdb.service" "network-online.target" ];
-    requires    = [ "surrealdb.service" ];
+    after       = [ "k3s.service" "network-online.target" ];
+    wants       = [ "k3s.service" ];
     serviceConfig = {
       Type             = "oneshot";
       User             = "dallas-permits";

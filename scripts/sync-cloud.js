@@ -9,7 +9,7 @@
  *   SURREALDB_URL=http://localhost:8000 \
  *   SURREALDB_USER=root SURREALDB_PASS=root \
  *   CLOUD_URL=https://shiny-ember-....surreal.cloud \
- *   CLOUD_TOKEN=eyJ... \
+ *   CLOUD_USER=aw CLOUD_PASS=yourpass \   # Basic auth (preferred — tokens expire in 10 min)
  *   node scripts/sync-cloud.js
  */
 
@@ -18,12 +18,14 @@ const LOCAL_USER = process.env.SURREALDB_USER || 'root';
 const LOCAL_PASS = process.env.SURREALDB_PASS || 'root';
 const CLOUD_URL  = process.env.CLOUD_URL  || '';
 const CLOUD_TOKEN = process.env.CLOUD_TOKEN || '';
+const CLOUD_USER = process.env.CLOUD_USER || '';
+const CLOUD_PASS = process.env.CLOUD_PASS || '';
 const SYNC_DAYS  = parseInt(process.env.SYNC_DAYS || '90', 10);
 const NS = 'dallas';
 const DB = 'permits';
 
-if (!CLOUD_URL || !CLOUD_TOKEN) {
-  console.error('CLOUD_URL and CLOUD_TOKEN are required.');
+if (!CLOUD_URL || (!CLOUD_TOKEN && (!CLOUD_USER || !CLOUD_PASS))) {
+  console.error('CLOUD_URL and either CLOUD_TOKEN or CLOUD_USER+CLOUD_PASS are required.');
   process.exit(1);
 }
 
@@ -38,28 +40,40 @@ function localHeaders() {
 }
 
 function cloudHeaders() {
+  const auth = CLOUD_TOKEN
+    ? `Bearer ${CLOUD_TOKEN}`
+    : 'Basic ' + Buffer.from(`${CLOUD_USER}:${CLOUD_PASS}`).toString('base64');
   return {
     'Content-Type':  'application/json',
     'Accept':        'application/json',
     'surreal-ns':    NS,
     'surreal-db':    DB,
-    'Authorization': `Bearer ${CLOUD_TOKEN}`,
+    'Authorization': auth,
   };
 }
 
+function buildUrl(base, vars) {
+  const keys = vars ? Object.keys(vars) : [];
+  if (!keys.length) return `${base}/sql`;
+  const params = new URLSearchParams();
+  for (const k of keys) {
+    const v = vars[k];
+    params.set(k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v));
+  }
+  return `${base}/sql?${params.toString()}`;
+}
+
 async function localQuery(sql, vars = {}) {
-  const res = await fetch(`${LOCAL_URL}/sql`, {
-    method: 'POST', headers: localHeaders(),
-    body: vars && Object.keys(vars).length ? JSON.stringify({ query: sql, vars }) : sql,
+  const res = await fetch(buildUrl(LOCAL_URL, vars), {
+    method: 'POST', headers: localHeaders(), body: sql,
   });
   if (!res.ok) throw new Error(`Local DB ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
 async function cloudQuery(sql, vars = {}) {
-  const res = await fetch(`${CLOUD_URL}/sql`, {
-    method: 'POST', headers: cloudHeaders(),
-    body: vars && Object.keys(vars).length ? JSON.stringify({ query: sql, vars }) : sql,
+  const res = await fetch(buildUrl(CLOUD_URL, vars), {
+    method: 'POST', headers: cloudHeaders(), body: sql,
   });
   if (!res.ok) throw new Error(`Cloud DB ${res.status}: ${await res.text()}`);
   return res.json();
