@@ -1,0 +1,44 @@
+name: Manual — trigger Optiplex index via SSH
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start date (YYYY-MM-DD) — leave blank to resume from cursor'
+        default: ''
+      module:
+        description: 'Module to index (blank = all: Building, Planning, Enforcement, PublicWorks)'
+        default: ''
+
+# Kicks off the full historical index on the Optiplex via SSH.
+# Requires OPTIPLEX_SSH_KEY secret (private key for aw@optiplex via Tailscale).
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10   # just fires the remote job and exits
+
+    steps:
+      - name: Trigger index on Optiplex
+        env:
+          SSH_KEY:    ${{ secrets.OPTIPLEX_SSH_KEY }}
+          START_DATE: ${{ github.event.inputs.start_date }}
+          MODULE:     ${{ github.event.inputs.module }}
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          # Join Tailscale so we can reach the Optiplex
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname "gh-actions-$$"
+
+          # Write SSH key
+          echo "$SSH_KEY" > /tmp/optiplex_key
+          chmod 600 /tmp/optiplex_key
+
+          # Fire the index service on Optiplex (non-blocking)
+          ssh -i /tmp/optiplex_key \
+            -o StrictHostKeyChecking=no \
+            aw@optiplex \
+            "START_DATE='${START_DATE}' MODULE='${MODULE}' \
+             systemctl start dallas-permits-index &"
+
+          echo "Index job started on Optiplex."

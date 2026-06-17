@@ -1,0 +1,13 @@
+{
+  "name": "dallas-permits",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "index":       "node scripts/index.js",
+    "incremental": "node scripts/incremental.js",
+    "verify":      "node scripts/verify.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.50.0"
+  }
+}

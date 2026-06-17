@@ -1,0 +1,32 @@
+name: CI — verify scraper still works
+
+on:
+  schedule:
+    - cron: '0 10 * * 1'   # Mondays 10:00 UTC — weekly smoke test
+  workflow_dispatch:
+
+# Scraping runs on the Optiplex via systemd timer, not here.
+# This workflow just confirms the scraper code can reach the site
+# and parse at least one record (no DB write).
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Smoke test
+        run: node scripts/verify.js
+        # verify.js does not write to DB — just scrapes one row
