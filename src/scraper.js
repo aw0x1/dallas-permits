@@ -18,12 +18,19 @@ export function makeBrowser() {
   });
 }
 
-// Fill a date input that has an ASP.NET watermark extender
+// Fill a date input that has an ASP.NET watermark extender.
+// page.type() lets the datepicker intercept keystrokes and override the value;
+// the native value setter bypasses that and sets the field directly.
 async function fillDate(page, selector, value) {
-  await page.click(selector);
-  await page.evaluate(s => { document.querySelector(s).value = ''; }, selector);
-  await page.type(selector, value, { delay: 40 });
-  await page.press(selector, 'Tab');
+  await page.evaluate(({ sel, val }) => {
+    const el = document.querySelector(sel);
+    el.focus();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(el, val);
+    el.dispatchEvent(new Event('input',  { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.blur();
+  }, { sel: selector, val: value });
   await page.waitForTimeout(200);
 }
 
