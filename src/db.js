@@ -25,14 +25,22 @@ const HEADERS = () => ({
 });
 
 export async function query(sql, vars = {}) {
-  const body = vars && Object.keys(vars).length
-    ? JSON.stringify({ query: sql, vars })
-    : sql;
+  // SurrealDB HTTP API: raw SQL in body, variables as URL query params (JSON-encoded for objects)
+  let endpoint = `${URL_}/sql`;
+  const keys = vars ? Object.keys(vars) : [];
+  if (keys.length) {
+    const params = new URLSearchParams();
+    for (const k of keys) {
+      const v = vars[k];
+      params.set(k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v));
+    }
+    endpoint += '?' + params.toString();
+  }
 
-  const res = await fetch(`${URL_}/sql`, {
+  const res = await fetch(endpoint, {
     method:  'POST',
     headers: HEADERS(),
-    body,
+    body:    sql,
   });
   if (!res.ok) {
     const text = await res.text();
